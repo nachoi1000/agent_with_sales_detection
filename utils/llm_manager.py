@@ -2,17 +2,31 @@ from pydantic import BaseModel
 
 
 class LLMClient:
-    def __init__(self, client, model="gpt-4o"):
+    def __init__(self, client, base_prompt, model="gpt-4o"):
         self.client = client
         self.model = model
+        self.base_prompt = base_prompt
 
     def chat_completion_response(self, prompt: str) -> str:
-        """This method receives a formatted prompt and returns the response as a string."""
+        """This method receives a formatted prompt and returns the response as a string.
+        In this request the prompt is on the user."""
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message.content
+    
+    def assistant_chat_completion_response(self, prompt: str, question: str) -> str:
+        """This method receives a formatted prompt and returns the response as a string.
+        In this request the prompt is on the content and a question string ."""
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": question}
             ]
         )
         return response.choices[0].message.content
