@@ -4,3 +4,5 @@ pandas
 ipykernel
 python-dotenv
 chromadb
+pymongo
+quart
