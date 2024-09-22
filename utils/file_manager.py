@@ -2,7 +2,7 @@ class FileManager:
     def __init__(self):
         self.file_content = ""
 
-    def load_md_file(self, file_path):
+    def load_md_file(self, file_path: str)-> str:
         """
         Carga el contenido de un archivo .md y lo asigna a la variable file_content.
         
@@ -11,6 +11,7 @@ class FileManager:
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 self.file_content = file.read()
+            return self.file_content 
         except FileNotFoundError:
             print(f"Error: El archivo {file_path} no se encontró.")
         except IOError as e:

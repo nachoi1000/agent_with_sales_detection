@@ -1,5 +1,4 @@
 import os
-import uuid
 from openai import OpenAI
 from utils.file_manager import FileManager
 from utils.conversation import Conversation
@@ -9,9 +8,9 @@ from dotenv import load_dotenv
 
 
 file_manager = FileManager()
-file_manager.load_md_file('prompts')
 conversation_memory_prompt = file_manager.load_md_file('prompts/conversation_memory.md')
 sales_detector_prompt = file_manager.load_md_file('prompts/sales_detector.md')
+consentiment_prompt = file_manager.load_md_file('prompts/consentiment.md')
 
 load_dotenv()
 
@@ -21,6 +20,7 @@ client = OpenAI(api_key=api_key)
 #Assistants
 assistant_memory = Assistant(client=client, base_prompt=conversation_memory_prompt)
 assistant_sales_detector = Assistant(client=client, base_prompt=sales_detector_prompt)
+assistant_consentiment = Assistant(client=client, base_prompt=consentiment_prompt)
 
 #MongoDB
 db = MongoDBManager()
@@ -51,7 +51,7 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
     conversation = db_manager.buscar_conversaciones_por_id(conversation_id=id)
     if len(conversation) == 0: # When it is the first message in the conversation
         question = user_input
-        sales_intention = client.send_chat_request(assistant="SalesDetector", messages=helper.set_user_message(content=question), variables=[], revision=5)
+        sales_intention = assistant_sales_detector.assistant_chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=question)
         if sales_intention in ["Strong", "Moderate"]:
             sales_intention = True
         else:
@@ -72,14 +72,14 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
         # when last_sales_intention is False:
         if last_sales_intention is False:
             question = user_input
-            sales_intention = client.send_chat_request(assistant="SalesDetector", messages=helper.set_user_message(content=question), variables=[], revision=5)
+            sales_intention = assistant_sales_detector.assistant_chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=question)
             if sales_intention in ["Strong", "Moderate"]:
                 sales_intention = True
             else:
                 sales_intention = False
             consent = None
             profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
-            chat_history = client.send_chat_request(assistant="Conversation_history", messages =[], variables=helper.set_variables(chat_history_value=var_chat_history, question_value=question), revision=2)
+            chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
             answer = client.send_execute_request(profile=profile, question=chat_history)
             conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
             db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
@@ -89,7 +89,7 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
         if last_sales_intention is True and last_consent is None:
             question = user_input
             sales_intention = True
-            concent = client.send_chat_request(assistant="ConsentimentDetector", messages=helper.set_user_message(content=question), variables=[], revision=3)
+            consent = assistant_consentiment.assistant_chat_completion_response(prompt=assistant_consentiment.base_prompt, question=question)
             if consent in ["Strong", "Moderate"]:
                 consent = True
                 answer = client.send_chat_request(assistant="thanksAndRequestData", messages=helper.set_user_message(content=question), variables=[], revision=2)
@@ -100,7 +100,7 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
             else:
                 consent = False
                 profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
-                chat_history = client.send_chat_request(assistant="Conversation_history", messages =[], variables=helper.set_variables(chat_history_value=var_chat_history, question_value=question), revision=2)
+                chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
                 answer = client.send_execute_request(profile=profile, question=chat_history)
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
@@ -113,7 +113,7 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
             sales_intention = True
             consent = last_consent
             profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
-            chat_history = client.send_chat_request(assistant="Conversation_history", messages =[], variables=helper.set_variables(chat_history_value=var_chat_history, question_value=question), revision=2)
+            chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
             answer = client.send_execute_request(profile=profile, question=chat_history)
             conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
             db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
