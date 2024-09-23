@@ -1,5 +1,6 @@
 import os
 from openai import OpenAI
+from utils.logger import logger
 from utils.file_manager import FileManager
 from utils.conversation import Conversation
 from utils.llm_manager import Assistant
@@ -51,14 +52,18 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
     conversation = db_manager.buscar_conversaciones_por_id(conversation_id=id)
     if len(conversation) == 0: # When it is the first message in the conversation
         question = user_input
+        logger.info(f"conversation_id: {id} - question: {question}")
         sales_intention = assistant_sales_detector.assistant_chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=question)
         if sales_intention in ["Strong", "Moderate"]:
             sales_intention = True
         else:
             sales_intention = False
+        logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
         consent = None
+        logger.info(f"conversation_id: {id} - consent: {consent}")
         profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
         answer = client.send_execute_request(profile=profile, question=question)
+        logger.info(f"conversation_id: {id} - answer: {answer}")
         conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
         db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
         #print(answer)
@@ -72,15 +77,19 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
         # when last_sales_intention is False:
         if last_sales_intention is False:
             question = user_input
+            logger.info(f"conversation_id: {id} - question: {question}")
             sales_intention = assistant_sales_detector.assistant_chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=question)
             if sales_intention in ["Strong", "Moderate"]:
                 sales_intention = True
             else:
                 sales_intention = False
+            logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
             consent = None
+            logger.info(f"conversation_id: {id} - sales_intention: {consent}")
             profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
             chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
             answer = client.send_execute_request(profile=profile, question=chat_history)
+            logger.info(f"conversation_id: {id} - answer: {answer}")
             conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
             db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
             return answer
@@ -88,20 +97,26 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
         # when last_sales_intention is True and last_consent is None:
         if last_sales_intention is True and last_consent is None:
             question = user_input
+            logger.info(f"conversation_id: {id} - question: {question}")
             sales_intention = True
+            logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
             consent = assistant_consentiment.assistant_chat_completion_response(prompt=assistant_consentiment.base_prompt, question=question)
             if consent in ["Strong", "Moderate"]:
                 consent = True
+                logger.info(f"conversation_id: {id} - consent: {consent}")
                 answer = client.send_chat_request(assistant="thanksAndRequestData", messages=helper.set_user_message(content=question), variables=[], revision=2)
+                logger.info(f"conversation_id: {id} - answer: {answer}")
                 #answer = "Thank you for giving your consent! To proceed, in the next message, please provide both your full name and email address. This information is necessary for us to assist you further."
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
                 return answer
             else:
                 consent = False
+                logger.info(f"conversation_id: {id} - consent: {consent}")
                 profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
                 chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
                 answer = client.send_execute_request(profile=profile, question=chat_history)
+                logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
                 return answer
@@ -110,11 +125,15 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
         # when last_sales_intention is True and last_content is not None:
         if last_sales_intention is True and last_consent is not None:
             question = user_input
+            logger.info(f"conversation_id: {id} - question: {question}")
             sales_intention = True
+            logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
             consent = last_consent
+            logger.info(f"conversation_id: {id} - consent: {consent}")
             profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
             chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
             answer = client.send_execute_request(profile=profile, question=chat_history)
+            logger.info(f"conversation_id: {id} - answer: {answer}")
             conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
             db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
             return answer
