@@ -47,7 +47,7 @@ def format_var_chat_history(resultados: list[dict])-> str:
 
 
 
-def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
+def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger = logger)-> str:
     """generate_answer recieves a user_input, an id and a db_manager, and returns the answer of teh user_input. It alsosave the conversation in the db"""
     conversation = db_manager.buscar_conversaciones_por_id(conversation_id=id)
     if len(conversation) == 0: # When it is the first message in the conversation
@@ -71,7 +71,7 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
     
     else: # When the conversation has previos messages.
         last_sales_intention = conversation[-1].get("sales_intention")
-        last_consent = conversation[-1].get("content")
+        last_consent = conversation[-1].get("consent")
         var_chat_history = format_var_chat_history(resultados=conversation)
 
         # when last_sales_intention is False:
@@ -81,18 +81,27 @@ def generate_answer(user_input: str, id: str, db_manager: MongoDBManager)-> str:
             sales_intention = assistant_sales_detector.assistant_chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=question)
             if sales_intention in ["Strong", "Moderate"]:
                 sales_intention = True
+                logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
+                consent = None
+                logger.info(f"conversation_id: {id} - sales_intention: {consent}")
+                chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
+                answer = client.send_execute_request(profile="PorspectBot", question=chat_history)
+                logger.info(f"conversation_id: {id} - answer: {answer}")
+                conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
+                db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                return answer
             else:
                 sales_intention = False
-            logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
-            consent = None
-            logger.info(f"conversation_id: {id} - sales_intention: {consent}")
-            profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
-            chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
-            answer = client.send_execute_request(profile=profile, question=chat_history)
-            logger.info(f"conversation_id: {id} - answer: {answer}")
-            conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-            db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
-            return answer
+                logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
+                consent = None
+                logger.info(f"conversation_id: {id} - sales_intention: {consent}")
+                profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
+                chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
+                answer = client.send_execute_request(profile=profile, question=chat_history)
+                logger.info(f"conversation_id: {id} - answer: {answer}")
+                conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
+                db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                return answer
         
         # when last_sales_intention is True and last_consent is None:
         if last_sales_intention is True and last_consent is None:
