@@ -29,7 +29,6 @@ def process_document(file_path: str, api_key: str) -> Optional[Document]:
         
         # Step 3: Generate vectors for the chunks using OpenAI embeddings
         vectorizer = Vectorizer(api_key)
-        print(document.chunks)
         vectors = vectorizer.generate_vectors(document.chunks)
         document.add_vectors(vectors)
         

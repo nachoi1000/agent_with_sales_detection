@@ -1,6 +1,6 @@
 from pymongo import MongoClient, errors
 from typing import List
-from utils.conversation import Conversation
+from utils.conversation import BaseConversation
 
 class MongoDBManager:
     """Class to manage MongoDB database where Conversation will be saved."""
@@ -39,7 +39,7 @@ class MongoDBManager:
             print(f"Error occurred while fetching conversations: {e}")
             return []
     
-    def add_conversation(self, conversation: Conversation) -> str:
+    def add_conversation(self, conversation: BaseConversation) -> str:
         """Add conversation to the collection."""
         self.reconnect_if_needed()
         try:
@@ -48,6 +48,22 @@ class MongoDBManager:
         except errors.InvalidOperation as e:
             print(f"Error occurred while adding conversation: {e}")
             return ""
+        
+    def count_messages_in_conversation(self, conversation_id: str) -> int:
+        """Calculate the amount of records belonging to a conversation_id."""
+        self.reconnect_if_needed()
+        try:
+            count = self.collection.count_documents({'conversation_id': conversation_id})
+            return count
+        except errors.InvalidOperation as e:
+            print(f"Error occurred while counting messages: {e}")
+            return 0
+
+    def get_available_messages(self, conversation_id: str, limit_conversation_messages: int) -> int:
+        """Calculate the amount of available messages in teh conversation till reach the message limit."""
+        total_messages = self.count_messages_in_conversation(conversation_id)
+        available_messages = max(limit_conversation_messages - total_messages, 0)  # Avoid negatives.
+        return available_messages
     
     def close_connection(self):
         """Close MongoDB connection."""

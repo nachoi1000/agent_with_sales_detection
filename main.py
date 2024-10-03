@@ -3,7 +3,7 @@ from openai import OpenAI
 from utils.logger import logger
 from utils.file_manager import FileManager
 from utils.conversation import Conversation
-from utils.llm_manager import Assistant
+from utils.llm_manager import Assistant, RAG
 from db.db_manager import MongoDBManager
 from dotenv import load_dotenv
 
@@ -12,6 +12,7 @@ file_manager = FileManager()
 conversation_memory_prompt = file_manager.load_md_file('prompts/conversation_memory.md')
 sales_detector_prompt = file_manager.load_md_file('prompts/sales_detector.md')
 consentiment_prompt = file_manager.load_md_file('prompts/consentiment.md')
+rag_prompt = file_manager.load_md_file('prompts/quantum_rag.md')
 
 load_dotenv()
 
@@ -22,9 +23,10 @@ client = OpenAI(api_key=api_key)
 assistant_memory = Assistant(client=client, base_prompt=conversation_memory_prompt)
 assistant_sales_detector = Assistant(client=client, base_prompt=sales_detector_prompt)
 assistant_consentiment = Assistant(client=client, base_prompt=consentiment_prompt)
+#rag = RAG(client=client, base_prompt=rag_prompt)
 
 #MongoDB
-db = MongoDBManager()
+#db = MongoDBManager()
 
 
 
@@ -48,7 +50,7 @@ def format_var_chat_history(resultados: list[dict])-> str:
 
 
 def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger = logger)-> str:
-    """generate_answer recieves a user_input, an id and a db_manager, and returns the answer of teh user_input. It alsosave the conversation in the db"""
+    """generate_answer recieves a user_input, an id and a db_manager, and returns the answer of teh user_input. It also saves the conversation in the db"""
     conversation = db_manager.buscar_conversaciones_por_id(conversation_id=id)
     if len(conversation) == 0: # When it is the first message in the conversation
         question = user_input
