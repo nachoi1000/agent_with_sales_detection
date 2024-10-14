@@ -1,4 +1,5 @@
 import os
+from typing import Tuple
 from openai import OpenAI
 from utils.logger import logger
 from utils.file_manager import FileManager
@@ -19,6 +20,8 @@ load_dotenv()
 api_key = os.environ.get("THE_OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
+limit_messages_in_conversation = int(os.environ.get("LIMIT_MESSAGES_IN_CONVERSATION"))
+
 #Assistants
 assistant_memory = Assistant(client=client, base_prompt=conversation_memory_prompt)
 assistant_sales_detector = Assistant(client=client, base_prompt=sales_detector_prompt)
@@ -26,7 +29,7 @@ assistant_consentiment = Assistant(client=client, base_prompt=consentiment_promp
 #rag = RAG(client=client, base_prompt=rag_prompt)
 
 #MongoDB
-#db = MongoDBManager()
+db_manager = MongoDBManager()
 
 
 
@@ -49,8 +52,8 @@ def format_var_chat_history(resultados: list[dict])-> str:
 
 
 
-def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger = logger)-> str:
-    """generate_answer recieves a user_input, an id and a db_manager, and returns the answer of teh user_input. It also saves the conversation in the db"""
+def generate_answer(id: str, user_input: str, db_manager: MongoDBManager = db_manager, limit_messages: int = limit_messages_in_conversation, logger = logger)-> Tuple[str, int]:
+    """generate_answer recieves a user_input, a conversation_id, a db_manager and a limit_messages, and returns the answer of the user_input and a integer indicating the remaining messages available in the conversation. It also saves the conversation in the db"""
     conversation = db_manager.buscar_conversaciones_por_id(conversation_id=id)
     if len(conversation) == 0: # When it is the first message in the conversation
         question = user_input
@@ -63,13 +66,15 @@ def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger
         logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
         consent = None
         logger.info(f"conversation_id: {id} - consent: {consent}")
-        profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
-        answer = client.send_execute_request(profile=profile, question=question)
+        #profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
+        #answer = client.send_execute_request(profile=profile, question=question)
+        answer = "This is an string only for tests!!!!"
         logger.info(f"conversation_id: {id} - answer: {answer}")
         conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
         db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
         #print(answer)
-        return answer # it also should return id.
+        remaining_messages = limit_messages - 1
+        return answer, remaining_messages 
     
     else: # When the conversation has previos messages.
         last_sales_intention = conversation[-1].get("sales_intention")
@@ -91,19 +96,22 @@ def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
-                return answer
+                remaining_messages = limit_messages - len(conversation) + 2
+                return answer, remaining_messages
             else:
                 sales_intention = False
                 logger.info(f"conversation_id: {id} - sales_intention: {sales_intention}")
                 consent = None
                 logger.info(f"conversation_id: {id} - sales_intention: {consent}")
-                profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
+                #profile = client.send_chat_request(assistant="PersonaDetector", messages=helper.set_user_message(content=question), variables=[], revision=4)
                 chat_history = assistant_memory.assistant_chat_completion_response(prompt=assistant_memory.base_prompt.format(var_chat_history=var_chat_history,question=question), question="")
-                answer = client.send_execute_request(profile=profile, question=chat_history)
+                #answer = client.send_execute_request(profile=profile, question=chat_history)
+                answer = "This is an string only for tests!!!!"
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
-                return answer
+                remaining_messages = limit_messages - len(conversation) - 1
+                return answer, remaining_messages
         
         # when last_sales_intention is True and last_consent is None:
         if last_sales_intention is True and last_consent is None:
@@ -120,7 +128,8 @@ def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger
                 #answer = "Thank you for giving your consent! To proceed, in the next message, please provide both your full name and email address. This information is necessary for us to assist you further."
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
-                return answer
+                remaining_messages = limit_messages - len(conversation) - 1
+                return answer, remaining_messages
             else:
                 consent = False
                 logger.info(f"conversation_id: {id} - consent: {consent}")
@@ -130,7 +139,8 @@ def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
-                return answer
+                remaining_messages = limit_messages - len(conversation) - 1
+                return answer, remaining_messages
 
                 
         # when last_sales_intention is True and last_content is not None:
@@ -147,7 +157,8 @@ def generate_answer(id: str, user_input: str, db_manager: MongoDBManager, logger
             logger.info(f"conversation_id: {id} - answer: {answer}")
             conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
             db_manager.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
-            return answer
+            remaining_messages = limit_messages - len(conversation) - 1
+            return answer, remaining_messages
         
 
 

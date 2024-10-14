@@ -2,9 +2,10 @@ import os
 from typing import Callable, List, Dict, Optional
 import chromadb
 from documents import Document
+#from retriever import RetrievalStrategies
 
 class ChromaVectorStore:
-    def __init__(self, collection_name: str, embedding_function: Callable, persist_directory: Optional[str] = None):
+    def __init__(self, collection_name: str, embedding_function: Callable, persist_directory: Optional[str] = None, metric: str = "cosine"):
         """
         Initializes the ChromaDB vectorstore client and sets up a collection.
         :param collection_name: The name of the collection for your vectors.
@@ -22,6 +23,7 @@ class ChromaVectorStore:
             self.client = chromadb.Client()
             
         self.collection_name = collection_name
+        self.metric = metric  
         self.collection = self.get_or_create_collection()
         self.embedding_function = embedding_function
 
@@ -32,7 +34,7 @@ class ChromaVectorStore:
         """
         return self.client.get_or_create_collection(
         name=self.collection_name,
-        metadata={"hnsw:space": "cosine"})
+        metadata={"hnsw:space": self.metric})
 
     def add_document(self, document: Document):
         """
@@ -52,7 +54,7 @@ class ChromaVectorStore:
                 metadatas=metadatas # Metadata for each chunk
             )
 
-    def query(self, query_texts: List[str], n_results: int = 5):
+    def OLD_query(self, query_texts: List[str], n_results: int = 5):
         """
         Queries the vectorstore for the closest documents to the provided query texts.
         :param query_texts: List of query text to find similar documents.
@@ -67,6 +69,17 @@ class ChromaVectorStore:
             n_results=n_results
         )
         return results
+    
+    #def query(self, query_texts: List[str], n_results: int = 5, strategy: Callable = RetrievalStrategies.default_strategy):
+    #    """
+    #    Queries the vectorstore for the closest documents to the provided query texts.
+    #    :param query_texts: List of query texts to find similar documents.
+    #    :param n_results: Number of results to return.
+    #    :param strategy: Strategy to use for retrieval (default: default strategy).
+    #    :return: List of matched document IDs and their metadata.
+    #    """
+    #    # Use the strategy for querying the vector store
+    #    return strategy(query_texts, self.embedding_function, self.collection, n_results)
 
     def delete_documents(self, ids: List[str]):
         """
@@ -89,3 +102,7 @@ class ChromaVectorStore:
         """
         results = self.collection.get(include=["metadatas", "documents", "embeddings"])
         return results
+    
+
+
+

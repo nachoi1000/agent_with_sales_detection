@@ -123,6 +123,17 @@
         #reset-button {
             background-color: var(--reset-button-bg);
         }
+        .remaining-messages {
+            text-align: center;
+            padding: 10px;
+            background-color: var(--input-bg);
+            border-top: 1px solid var(--text-color);
+            font-size: 14px;
+        }
+        #send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -144,12 +155,17 @@
                     Reset
                 </button>
             </div>
+            <div id="remaining-messages" class="remaining-messages">
+                Available Messages: <span id="remaining-count">10</span>
+            </div>
         </div>
     </div>
 
     <script>
         let conversationId = null;
         let isDarkMode = false;
+        let remainingMessages = 10;
+        let isWaitingForResponse = false;
 
         async function createConversation() {
             const response = await fetch('/conversation', {
@@ -165,7 +181,10 @@
 
         async function sendMessage() {
             const userInput = document.getElementById('user-input').value;
-            if (!userInput) return;
+            if (!userInput || remainingMessages === 0 || isWaitingForResponse) return;
+
+            isWaitingForResponse = true;
+            updateSendButtonState();
 
             addMessage(userInput, 'user-message');
             document.getElementById('user-input').value = '';
@@ -174,15 +193,24 @@
                 await createConversation();
             }
 
-            const response = await fetch('/message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ conversation_id: conversationId, user_input: userInput }),
-            });
-            const data = await response.json();
-            addMessage(data.answer, 'bot-message');
+            try {
+                const response = await fetch('/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ conversation_id: conversationId, user_input: userInput }),
+                });
+                const data = await response.json();
+                addMessage(data.answer, 'bot-message');
+                updateRemainingMessages(data.remaining_messages);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, there was an error processing your request.', 'bot-message');
+            } finally {
+                isWaitingForResponse = false;
+                updateSendButtonState();
+            }
         }
 
         function addMessage(message, className) {
@@ -197,6 +225,9 @@
         function resetChat() {
             document.getElementById('messages').innerHTML = '';
             conversationId = null;
+            updateRemainingMessages(10);
+            isWaitingForResponse = false;
+            updateSendButtonState();
         }
 
         function toggleDarkMode() {
@@ -217,9 +248,21 @@
             }
         }
 
+        function updateRemainingMessages(count) {
+            remainingMessages = count;
+            document.getElementById('remaining-count').textContent = count;
+            updateSendButtonState();
+        }
+
+        function updateSendButtonState() {
+            const sendButton = document.getElementById('send-button');
+            sendButton.disabled = remainingMessages === 0 || isWaitingForResponse;
+        }
+
         // Initialize the conversation and Lucide icons
         createConversation();
         lucide.createIcons();
+        updateRemainingMessages(10);
     </script>
 </body>
 </html>

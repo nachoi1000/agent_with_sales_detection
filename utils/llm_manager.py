@@ -10,14 +10,17 @@ class LLMClient:
         self.max_retries = max_retries
 
     def _handle_response(self, response):
-        # Check if the response code indicates missing password (assuming 401 for this case)
-        if response.status_code == 401:
-            raise ValueError("Authentication failed. Password missing or incorrect.")
-
-        # Retry if the response is not successful and isn't a password issue
-        if response.status_code != 200:
+        # Check if 'choices' exists and is not empty
+        if not response.choices:
+            # If 'choices' is empty, consider it a failed response
             return False
-        
+
+        # If you need to perform additional checks, such as validating the completion reason
+        choice = response.choices[0]
+        if choice.finish_reason not in ['stop', 'length']:
+            # If the reason isn't 'stop' or 'length', it might be an incomplete response
+            return False
+
         return True
 
 
@@ -90,7 +93,8 @@ class Assistant(LLMClient):
 
 
 class RAG(LLMClient):
-    def __init__(self, client, vectorstore, base_prompt,model="gpt-4o"):
+    def __init__(self, client, vectorstore, retriever, base_prompt,model="gpt-4o"):
         super().__init__(client, model)
         self.vectorstore = vectorstore
+        self.retriever = retriever
         self.base_prompt = base_prompt
