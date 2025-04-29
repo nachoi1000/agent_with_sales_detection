@@ -34,7 +34,7 @@ db_manager = MongoDBManager()
 
 
 def format_var_chat_history(resultados: list[dict])-> str:
-    """This function recievesa list of Conversations and for each row (dict), retrieves the questiona dn answer, and generate a string based on that values."""
+    """This function recieves a list of Conversations and for each row (dict), retrieves the questiona dn answer, and generate a string based on that values."""
     conversacion = ""
     
     for registro in resultados:

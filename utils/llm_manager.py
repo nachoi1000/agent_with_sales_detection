@@ -1,4 +1,6 @@
 from pydantic import BaseModel
+from data_ingestion.indexing.retriever import RetrievalStrategies
+from data_ingestion.indexing.vectorstore import ChromaVectorStore
 import time
 
 
@@ -87,14 +89,18 @@ class LLMClient:
 
 
 class Assistant(LLMClient):
-    def __init__(self, client, base_prompt, model="gpt-4o"):
-        super().__init__(client, model)
+    def __init__(self, client, base_prompt, model="gpt-4o", max_retries=3):
+        super().__init__(client, model, max_retries)
         self.base_prompt = base_prompt
 
 
 class RAG(LLMClient):
-    def __init__(self, client, vectorstore, retriever, base_prompt,model="gpt-4o"):
-        super().__init__(client, model)
+    def __init__(self, client, vectorstore: ChromaVectorStore, retriever: RetrievalStrategies, base_prompt: str,model: str = "gpt-4o", max_retries: int = 3):
+        super().__init__(client, model, max_retries)
         self.vectorstore = vectorstore
         self.retriever = retriever
         self.base_prompt = base_prompt
+
+    def format_prompt(self, context: str) -> str:
+        """Format the base_prompt with the given context."""
+        return self.base_prompt.replace("{context}", context)
