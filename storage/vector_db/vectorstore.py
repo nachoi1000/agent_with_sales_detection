@@ -1,10 +1,13 @@
+import inspect
 import os
 from typing import Callable, List, Dict, Optional
 import chromadb
 from data_ingestion.indexing.documents import Document
 import chromadb.utils.embedding_functions as embedding_functions
 from dotenv import load_dotenv
-from retriever import RetrievalStrategies
+import numpy as np
+from sentence_transformers import CrossEncoder
+from rank_bm25 import BM25Okapi
 
 # Load environment variables
 load_dotenv()
@@ -139,6 +142,7 @@ class ChromaVectorStore:
         """
         results = self.collection.get(include=["metadatas", "documents", "embeddings"])
         return results
+    
 
     def apply_retrieval_strategy(self, strategy_name: str, query_texts: List[str], n_results: int = 5):
         """
@@ -148,11 +152,205 @@ class ChromaVectorStore:
         :param n_results: Number of results to return.
         :return: Results of the retrieval strategy.
         """
+    #def apply_retrieval_strategy(self, strategy_name: str, query_texts: List[str], n_results: int = 5):
         if not hasattr(self.retrieval_strategies, strategy_name):
             raise ValueError(f"Strategy {strategy_name} is not defined in RetrievalStrategies.")
         
         strategy = getattr(self.retrieval_strategies, strategy_name)
-        return strategy(query_texts=query_texts, embedding_function=self.embedding_function, collection=self.collection, n_results=n_results)
+        
+        # Recolectar todos los argumentos posibles
+        available_args = {
+            "query_texts": query_texts,
+            "embedding_function": self.embedding_function,
+            "collection": self.collection,
+            "n_results": n_results
+        }
+
+        # Inspeccionar la firma de la función y filtrar solo los argumentos que acepta
+        sig = inspect.signature(strategy)
+        valid_args = {
+            k: v for k, v in available_args.items() if k in sig.parameters
+        }
+
+        return strategy(**valid_args)
 
 
+class RetrievalStrategies:
+
+    cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+
+    @staticmethod
+    def text_search(query_texts: List[str], embedding_function: Callable, collection, n_results: int): #BM25
+        """
+        Hybrid BM25 strategy: retrieves a subset of documents using vector search,
+        then applies BM25 scoring over them.
+        
+        :param query_texts: List of query texts.
+        :param embedding_function: Embedding function (used for initial filtering).
+        :param collection: The ChromaDB collection to search.
+        :param n_results: Number of results to return.
+        :return: List of BM25-scored top results.
+        """
+        from rank_bm25 import BM25Okapi
+        import numpy as np
+
+        query = query_texts[0]
+
+        # Paso 1: Recuperar los documentos candidatos (ej. top 50) usando búsqueda vectorial
+        initial_results = collection.query(
+            query_texts=[query],
+            n_results=max(n_results * 3, 30),
+            include=["documents", "metadatas"]  # "ids" no es válido aquí
+        )
+        
+        ids = initial_results["ids"][0]
+        documents = initial_results["documents"][0]
+        metadatas = initial_results["metadatas"][0]
+
+        # Paso 2: Aplicar BM25 sobre los documentos recuperados
+        tokenized_corpus = [doc.lower().split() for doc in documents]
+        tokenized_query = query.lower().split()
+
+        bm25 = BM25Okapi(tokenized_corpus)
+        scores = bm25.get_scores(tokenized_query)
+        top_indices = np.argsort(scores)[::-1][:n_results]
+
+        return [
+            {
+                "id": ids[i],
+                "document": documents[i],
+                "metadata": metadatas[i],
+                "score": float(scores[i])
+            }
+            for i in top_indices
+        ]
+
+    @staticmethod
+    def vector_search(query_texts: List[str], embedding_function: Callable, collection, n_results: int):
+        """
+        Searches for documents by vector similarity.
+        :param query_texts: List of query texts to find similar documents.
+        :param embedding_function: Function to convert text into vector embeddings.
+        :param collection: The ChromaDB collection to search.
+        :param n_results: Number of results to return.
+        :return: List of matched document IDs and their metadata.
+        """
+        query_embeddings = [embedding_function(query)[0] for query in query_texts]
+        initial_results = collection.query(query_embeddings=query_embeddings, n_results=n_results)
+        
+        ids = initial_results["ids"][0]
+        documents = initial_results["documents"][0]
+        metadatas = initial_results["metadatas"][0]
+        
+        return [
+            {
+                "id": doc_id,
+                "document": doc,
+                "metadata": meta
+            }
+            for doc, meta, doc_id in zip(documents, metadatas, ids)
+        ]
+
+    @staticmethod
+    def hybrid_search(query_texts: List[str], embedding_function: Callable, collection, n_results: int):
+        """
+        Combines text search and vector search.
+        :param query_texts: List of query texts to find similar documents.
+        :param embedding_function: Function to convert text into vector embeddings.
+        :param collection: The ChromaDB collection to search.
+        :param n_results: Number of results to return.
+        :return: Combined list of results from text and vector searches.
+        """
+        if n_results % 2 > 0:
+            n_results += 1
+
+        half = n_results // 2
+        text_results = RetrievalStrategies.text_search(query_texts, embedding_function, collection, half)
+        vector_results = RetrievalStrategies.vector_search(query_texts, embedding_function, collection, half)
+
+        combined_results = text_results + vector_results
+
+        # Quitar duplicados si es necesario por ID
+        seen_ids = set()
+        unique_results = []
+        for r in combined_results:
+            if r["id"] not in seen_ids:
+                unique_results.append(r)
+                seen_ids.add(r["id"])
+
+        unique_results.sort(key=lambda x: x.get("score", 0.0), reverse=True)
+        return unique_results[:n_results]
+
+    @staticmethod
+    def HyDE(query_texts: List[str], embedding_function: Callable, collection, n_results: int):
+        """
+        Hypothetical Document Embeddings (HyDE) strategy.
+        :param query_texts: List of query texts.
+        :param embedding_function: Function to generate synthetic embeddings for query texts.
+        :param collection: The ChromaDB collection to search.
+        :param n_results: Number of results to return.
+        :return: List of results from HyDE search.
+        """
+
+        #file_manager = FileManager()
+        #hyde_prompt = file_manager.load_md_file(file_path="hyde_prompt.md")
+        hyde_prompt = "test"
+        hyde_texts = [f"Generated context for: {query}" for query in query_texts]
+        results = RetrievalStrategies.vector_search(hyde_texts, embedding_function, collection, n_results)
+        return results
+
+    @staticmethod
+    def reranking(query_texts: List[str], embedding_function: Callable, collection, n_results: int):
+        """
+        Re-ranking strategy: initial vector search followed by re-ranking.
+        :param query_texts: List of query texts.
+        :param embedding_function: Function to convert text into vector embeddings.
+        :param collection: The ChromaDB collection to search.
+        :param n_results: Number of results to return.
+        :return: List of re-ranked results.
+        """
+        query_embeddings = [embedding_function(query)[0] for query in query_texts]
+        initial_results = collection.query(query_embeddings=query_embeddings, n_results=n_results* 2)
+        reranked_results = RetrievalStrategies._rerank_results(initial_results, query_texts, n_results)
+        return reranked_results
+
+    @staticmethod
+    def _rerank_results(initial_results, query_texts, n_results):
+        """
+        Re-ranks initial results based on similarity scores computed by a cross-encoder model.
+        :param initial_results: Initial retrieval results with document contents.
+        :param query_texts: List of query texts.
+        :param n_results: Number of results to return.
+        :return: List of top re-ranked results.
+        """
+
+        # Ensure we are working with a single query text (for simplicity)
+        query = query_texts[0]
+
+        # Extraer los documentos del primer query
+        retrieved_documents = initial_results["documents"][0]
+        retrieved_ids = initial_results["ids"][0]
+        retrieved_metadatas = initial_results["metadatas"][0]
+
+        # Prepare pairs of (query, document) for cross-encoder scoring
+        pairs = [[query, doc] for doc in retrieved_documents]
+
+        # Get similarity scores from the cross-encoder
+        scores = RetrievalStrategies.cross_encoder.predict(pairs)
+
+        # Sort indices based on scores in descending order
+        sorted_indices = np.argsort(scores)[::-1]
+
+        # Construir los resultados re-rankeados como lista de dicts
+        reranked_results = [
+            {
+                "id": retrieved_ids[i],
+                "document": retrieved_documents[i],
+                "metadata": retrieved_metadatas[i],
+                "score": float(scores[i])
+            }
+            for i in sorted_indices[:n_results]
+        ]
+
+        return reranked_results
 

@@ -1,4 +1,5 @@
 #python app.py
+#Clean cache: find . -type d -name "__pycache__" -exec rm -r {} +
 from quart import Quart, request, jsonify, send_from_directory
 from main import generate_answer
 import uuid
@@ -17,8 +18,8 @@ async def send_message():
     data = await request.get_json()
     conversation_id = data.get("conversation_id")
     user_input = data.get("user_input")
-    answer, remaining_messages = generate_answer(conversation_id, user_input)
-    return jsonify({"answer": answer, "remaining_messages": remaining_messages})
+    result = generate_answer(conversation_id, user_input)
+    return jsonify(**result)
 
 # Ruta para servir el frontend
 @app.route('/')
