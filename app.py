@@ -1,5 +1,4 @@
 #python app.py
-#Clean cache: find . -type d -name "__pycache__" -exec rm -r {} +
 from quart import Quart, request, jsonify, send_from_directory
 from main import generate_answer
 import uuid

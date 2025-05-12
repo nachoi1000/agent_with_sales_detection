@@ -5,7 +5,7 @@ from utils.conversation import BaseConversation
 class MongoDBManager:
     """Class to manage MongoDB database where Conversation will be saved."""
     
-    def __init__(self, uri: str = 'mongodb://localhost:27017/', db_name: str = 'your_database_name', collection_name: str = 'conversations'):
+    def __init__(self, db_name: str = 'your_database_name', collection_name: str = 'conversations', uri: str = 'mongodb://root:example@localhost:27017/'):
         self.uri = uri
         self.db_name = db_name
         self.collection_name = collection_name

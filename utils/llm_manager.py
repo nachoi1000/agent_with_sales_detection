@@ -88,10 +88,10 @@ class Assistant(LLMClient):
 
 
 class RAG(LLMClient):
-    def __init__(self, client, vectorstore: ChromaVectorStore, base_prompt: str, model: str = "gpt-4o", max_retries: int = 3):
+    def __init__(self, client, vectorstore: ChromaVectorStore, retrieval_strategy: str = "hybrid_search", base_prompt: str = None, model: str = "gpt-4o", max_retries: int = 3):
         super().__init__(client=client, base_prompt=base_prompt, model=model, max_retries=max_retries)
         self.vectorstore = vectorstore
-        self.retrieval_strategy = "hybrid_search"
+        self.retrieval_strategy = retrieval_strategy
 
     def get_context(self, question: str, number_of_docs: int = 8) -> str:
         """Retrieves and formats the context."""
