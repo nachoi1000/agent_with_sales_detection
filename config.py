@@ -29,6 +29,10 @@ file_manager = FileManager()
 api_key = os.environ.get("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
+#Assistant Content FIlter
+content_filter_prompt = file_manager.load_md_file("prompts/content_filter.md")
+assistant_content_filter = Assistant(client=client, base_prompt=content_filter_prompt)
+
 #Assistant Conversation Memory  
 conversation_memory_prompt = file_manager.load_md_file('prompts/conversation_memory.md')
 assistant_memory = Assistant(client=client, base_prompt=conversation_memory_prompt)
