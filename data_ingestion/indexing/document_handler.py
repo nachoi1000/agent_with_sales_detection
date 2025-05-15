@@ -1,8 +1,15 @@
+import os
 from typing import List, Optional
-from chunker import Chunker
-from loader import LocalLoader
-from vectorizer import Vectorizer
-from documents import Document
+from data_ingestion.indexing.chunker import Chunker
+from data_ingestion.indexing.loader import LocalLoader
+from data_ingestion.indexing.vectorizer import Vectorizer
+from data_ingestion.indexing.documents import Document
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+chunk_size = int(os.environ.get("CHUNKER_CHUNK_SIZE"))
+chunk_overlap = int(os.environ.get("CHUNKER_CHUNK_OVERLAP"))
 
 
 def process_document(file_path: str, api_key: str) -> Optional[Document]:
@@ -23,7 +30,7 @@ def process_document(file_path: str, api_key: str) -> Optional[Document]:
         document.content = loader.load()
         
         # Step 2: Chunk the document content
-        chunker = Chunker(chunk_size=1000, chunk_overlap_size=200)
+        chunker = Chunker(chunk_size=chunk_size, chunk_overlap_size=chunk_overlap)
         chunks = chunker.generate_chunks([document.content])
         document.add_chunks(chunks)
         

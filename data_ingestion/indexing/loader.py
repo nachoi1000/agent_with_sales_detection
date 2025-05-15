@@ -3,7 +3,7 @@ import pdfplumber
 from docx import Document as DocxDocument
 import pypandoc  # Make sure pypandoc is installed
 from typing import Optional
-from documents import Document
+from data_ingestion.indexing.documents import Document
 
 class LocalLoader:
     def __init__(self, document: Document):
