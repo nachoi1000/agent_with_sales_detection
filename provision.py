@@ -40,4 +40,4 @@ for elemento in os.listdir(data_directory):
     # Add the document to the vectorstore
     vectorstore.add_document(result)
 
-logging.info(f"Data Ingestion finished!")
+logging.info("Data Ingestion finished!")

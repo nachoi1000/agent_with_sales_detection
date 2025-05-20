@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 limit_messages_in_conversation = int(os.environ.get("LIMIT_MESSAGES_IN_CONVERSATION"))
+threshold_sales_intention_trigger = int(os.environ.get("THRESHOLD_SALES_INTENTION_TRIGGER"))
 
 #Mongo
 mongo_initdb_root_username = os.environ.get("MONGO_INITDB_ROOT_USERNAME")
@@ -28,26 +29,30 @@ vectorstore = ChromaVectorStore(collection_name=collection_name, persist_directo
 file_manager = FileManager()
 api_key = os.environ.get("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
+assistant_model = "gpt-4o-mini"
+detector_model = "o3-mini"
+rag_model = "gpt-4o"
+
 
 #Assistant Content FIlter
 content_filter_prompt = file_manager.load_md_file("prompts/content_filter.md")
-assistant_content_filter = Assistant(client=client, base_prompt=content_filter_prompt)
+assistant_content_filter = Assistant(client=client, base_prompt=content_filter_prompt, model=assistant_model)
 
 #Assistant Conversation Memory  
 conversation_memory_prompt = file_manager.load_md_file('prompts/conversation_memory.md')
-assistant_memory = Assistant(client=client, base_prompt=conversation_memory_prompt)
+assistant_memory = Assistant(client=client, base_prompt=conversation_memory_prompt, model=assistant_model)
 
 #Assistant Sales Detector  
 sales_detector_prompt = file_manager.load_md_file('prompts/sales_detector.md')
-assistant_sales_detector = Assistant(client=client, base_prompt=sales_detector_prompt)
+assistant_sales_detector = Assistant(client=client, base_prompt=sales_detector_prompt, model=detector_model)
 
 #Assistant Consentiment   
 consentiment_prompt = file_manager.load_md_file('prompts/consentiment.md')
-assistant_consentiment = Assistant(client=client, base_prompt=consentiment_prompt)
+assistant_consentiment = Assistant(client=client, base_prompt=consentiment_prompt, model=detector_model)
 
 #Assistant Request Data  
 request_data_prompt = file_manager.load_md_file("prompts/request_user_data.md")
-assistant_request_data = Assistant(client=client, base_prompt=request_data_prompt)
+assistant_request_data = Assistant(client=client, base_prompt=request_data_prompt, model=assistant_model)
 
 #RAG
 rag_prompt = file_manager.load_md_file('prompts/quantum_rag.md')

@@ -75,6 +75,15 @@
             padding: 10px;
             border-radius: 5px;
             max-width: 80%;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message-icon {
+            margin-right: 10px;
+            min-width: 24px;
+        }
+        .message-content {
+            flex-grow: 1;
         }
         .user-message {
             background-color: #e1f5fe;
@@ -88,6 +97,7 @@
             color: #33691e;
             font-family: 'Courier New', Courier, monospace;
             align-self: flex-start;
+            white-space: pre-wrap;
         }
         .input-area {
             display: flex;
@@ -165,6 +175,7 @@
         let conversationId = null;
         let isDarkMode = false;
         let remainingMessages = 10;
+        let isWaitingForResponse = false;
 
         async function createConversation() {
             const response = await fetch('/conversation', {
@@ -176,11 +187,18 @@
             });
             const data = await response.json();
             conversationId = data.conversation_id;
+            
+            // Display welcome message after creating conversation
+            const welcomeMessage = "Hello and welcome to QuantumChain Technologies! 🚀\nI'm your virtual assistant, here to help you with anything related to our AI, blockchain, and cybersecurity solutions.\n\nHow can I assist you today?";
+            addMessage(welcomeMessage, 'bot-message');
         }
 
         async function sendMessage() {
             const userInput = document.getElementById('user-input').value;
-            if (!userInput || remainingMessages === 0) return;
+            if (!userInput || remainingMessages === 0 || isWaitingForResponse) return;
+
+            isWaitingForResponse = true;
+            updateSendButtonState();
 
             addMessage(userInput, 'user-message');
             document.getElementById('user-input').value = '';
@@ -189,31 +207,78 @@
                 await createConversation();
             }
 
-            const response = await fetch('/message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ conversation_id: conversationId, user_input: userInput }),
-            });
-            const data = await response.json();
-            addMessage(data.answer, 'bot-message');
-            updateRemainingMessages(data.remaining_messages);
+            try {
+                const response = await fetch('/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ conversation_id: conversationId, user_input: userInput }),
+                });
+                const data = await response.json();
+                addMessage(data.answer, 'bot-message');
+                updateRemainingMessages(data.remaining_messages);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, there was an error processing your request.', 'bot-message');
+            } finally {
+                isWaitingForResponse = false;
+                updateSendButtonState();
+            }
         }
 
         function addMessage(message, className) {
             const messagesContainer = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.classList.add('message', className);
-            messageElement.textContent = message;
+            
+            // Create icon element
+            const iconElement = document.createElement('div');
+            iconElement.classList.add('message-icon');
+            
+            // Add appropriate icon based on message type
+            if (className === 'user-message') {
+                iconElement.innerHTML = '<i data-lucide="user"></i>';
+            } else {
+                iconElement.innerHTML = '<i data-lucide="bot"></i>';
+            }
+            
+            // Create content element
+            const contentElement = document.createElement('div');
+            contentElement.classList.add('message-content');
+            contentElement.textContent = message;
+            
+            // Append icon and content to message
+            messageElement.appendChild(iconElement);
+            messageElement.appendChild(contentElement);
+            
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            // Initialize the icon
+            lucide.createIcons({
+                icons: {
+                    'user': {
+                        width: 24,
+                        height: 24
+                    },
+                    'bot': {
+                        width: 24,
+                        height: 24
+                    }
+                }
+            });
         }
 
         function resetChat() {
             document.getElementById('messages').innerHTML = '';
             conversationId = null;
             updateRemainingMessages(10);
+            isWaitingForResponse = false;
+            updateSendButtonState();
+            
+            // Show welcome message again after reset
+            createConversation();
         }
 
         function toggleDarkMode() {
@@ -237,13 +302,20 @@
         function updateRemainingMessages(count) {
             remainingMessages = count;
             document.getElementById('remaining-count').textContent = count;
-            document.getElementById('send-button').disabled = count === 0;
+            updateSendButtonState();
+        }
+
+        function updateSendButtonState() {
+            const sendButton = document.getElementById('send-button');
+            sendButton.disabled = remainingMessages === 0 || isWaitingForResponse;
         }
 
         // Initialize the conversation and Lucide icons
-        createConversation();
-        lucide.createIcons();
-        updateRemainingMessages(10);
+        document.addEventListener('DOMContentLoaded', function() {
+            createConversation();
+            lucide.createIcons();
+            updateRemainingMessages(10);
+        });
     </script>
 </body>
 </html>

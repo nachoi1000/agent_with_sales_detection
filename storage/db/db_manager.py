@@ -1,6 +1,8 @@
+from datetime import datetime, timedelta
 from pymongo import MongoClient, errors
 from typing import List
 from utils.conversation import BaseConversation
+from bson.objectid import ObjectId
 
 class MongoDBManager:
     """Class to manage MongoDB database where Conversation will be saved."""
@@ -33,7 +35,12 @@ class MongoDBManager:
         """Search conversations by its ID."""
         self.reconnect_if_needed()
         try:
-            registros = self.collection.find({'conversation_id': conversation_id})
+            hace_una_semana = datetime.utcnow() - timedelta(weeks=1)
+            limite_id = ObjectId.from_datetime(hace_una_semana)
+            registros = self.collection.find({
+                'conversation_id': conversation_id,
+                '_id': {'$gte': limite_id} # Documrnts with less than a week
+            })
             return list(registros)
         except errors.InvalidOperation as e:
             print(f"Error occurred while fetching conversations: {e}")

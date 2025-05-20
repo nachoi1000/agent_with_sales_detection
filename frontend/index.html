@@ -75,6 +75,15 @@
             padding: 10px;
             border-radius: 5px;
             max-width: 80%;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message-icon {
+            margin-right: 10px;
+            min-width: 24px;
+        }
+        .message-content {
+            flex-grow: 1;
         }
         .user-message {
             background-color: #e1f5fe;
@@ -178,6 +187,10 @@
             });
             const data = await response.json();
             conversationId = data.conversation_id;
+            
+            // Display welcome message after creating conversation
+            const welcomeMessage = "Hello and welcome to QuantumChain Technologies! 🚀\nI'm your virtual assistant, here to help you with anything related to our AI, blockchain, and cybersecurity solutions.\n\nHow can I assist you today?";
+            addMessage(welcomeMessage, 'bot-message');
         }
 
         async function sendMessage() {
@@ -218,9 +231,27 @@
             const messagesContainer = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.classList.add('message', className);
-            messageElement.textContent = message;
+
+            const iconElement = document.createElement('div');
+            iconElement.classList.add('message-icon');
+
+            if (className === 'user-message') {
+                iconElement.innerHTML = '<i data-lucide="user-circle"></i>';
+            } else {
+                iconElement.innerHTML = '<i data-lucide="bot"></i>';
+            }
+
+            const contentElement = document.createElement('div');
+            contentElement.classList.add('message-content');
+            contentElement.textContent = message;
+
+            messageElement.appendChild(iconElement);
+            messageElement.appendChild(contentElement);
+
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            lucide.createIcons();
         }
 
         function resetChat() {
@@ -229,6 +260,9 @@
             updateRemainingMessages(10);
             isWaitingForResponse = false;
             updateSendButtonState();
+            
+            // Show welcome message again after reset
+            createConversation();
         }
 
         function toggleDarkMode() {
@@ -261,9 +295,11 @@
         }
 
         // Initialize the conversation and Lucide icons
-        createConversation();
-        lucide.createIcons();
-        updateRemainingMessages(10);
+        document.addEventListener('DOMContentLoaded', function() {
+            createConversation();
+            lucide.createIcons();
+            updateRemainingMessages(10);
+        });
     </script>
 </body>
 </html>
