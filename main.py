@@ -75,7 +75,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                 answer = rag_api_call.get("answer") + request_consent
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                 remaining_messages = limit_messages
                 return {"answer":answer, "remaining_messages":remaining_messages}
             else:
@@ -90,7 +90,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                 answer = rag_api_call.get("answer")
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                 remaining_messages = limit_messages - 1
                 return {"answer":answer, "remaining_messages":remaining_messages} 
         
@@ -105,7 +105,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
 
             # when last_sales_intention is False:
             if last_sales_intention is False and len(conversation) < threshold_sales_intention_trigger:
-                sales_intention_api_call = assistant_sales_detector.chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=question)
+                sales_intention_api_call = assistant_sales_detector.chat_completion_response(prompt=assistant_sales_detector.base_prompt, question=chat_history)
                 tokens_input += sales_intention_api_call.get("tokens_input")
                 tokens_output += sales_intention_api_call.get("tokens_output")
                 logger.info(f"conversation_id: {id} - sales_intention_api_call: {sales_intention_api_call}")
@@ -121,7 +121,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     answer = rag_api_call.get("answer") + request_consent
                     logger.info(f"conversation_id: {id} - answer: {answer}")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                    db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                     remaining_messages = limit_messages - len(conversation) + 2
                     return {"answer":answer, "remaining_messages":remaining_messages} 
                 else:
@@ -136,7 +136,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     answer = rag_api_call.get("answer")
                     logger.info(f"conversation_id: {id} - answer: {answer}")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                    db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                     remaining_messages = limit_messages - len(conversation) - 1
                     return {"answer":answer, "remaining_messages":remaining_messages} 
             
@@ -152,7 +152,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                 answer = rag_api_call.get("answer") + request_consent
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                 remaining_messages = limit_messages - len(conversation) + 2
                 return {"answer":answer, "remaining_messages":remaining_messages} 
 
@@ -169,7 +169,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     answer = thanks_and_true_consent
                     logger.info(f"conversation_id: {id} - answer: {answer}")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                    db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                     remaining_messages = limit_messages - len(conversation) - 1
                     return {"answer":answer, "remaining_messages":remaining_messages} 
                 else:
@@ -178,7 +178,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     answer = thanks_and_false_consent
                     logger.info(f"conversation_id: {id} - answer: {answer}")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                    db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                     remaining_messages = limit_messages - len(conversation) - 1
                     return {"answer":answer, "remaining_messages":remaining_messages} 
 
@@ -206,7 +206,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     user_data = user_data_api_call.get("answer")
                     logger.info(f"conversation_id: {id} - user_data: {user_data}")
                     user_data_to_save = ConversationForSales(conversation_id=id, name=user_data.name, email=user_data.email, message=question)
-                    db_manager_userdata.add_conversation(user_data_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_userdata.add_item(user_data_to_save) # SAVE conversation_to_save IN DB
 
                     # Generate a responses requesting the missing user data.
                     response_api_call = assistant_request_data.chat_completion_response(prompt=assistant_request_data.base_prompt.format(user_data = UserInformation.schema_json(indent=2), current_data = user_data.get("answer")), question="")
@@ -214,7 +214,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     tokens_output += response_api_call.get("tokens_output")
                     answer = response_api_call.get("answer")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                    db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                     remaining_messages = limit_messages - len(conversation)
                     return {"answer":answer, "remaining_messages":remaining_messages}
                 
@@ -230,7 +230,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     answer = rag_api_call.get("answer")
                     logger.info(f"conversation_id: {id} - answer: {answer}")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                    db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                    db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                     remaining_messages = limit_messages - len(conversation) - 1
                     return {"answer":answer, "remaining_messages":remaining_messages} 
 
@@ -247,7 +247,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                 answer = rag_api_call.get("answer")
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
-                db_manager_conversations.add_conversation(conversation_to_save) # SAVE conversation_to_save IN DB
+                db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
                 remaining_messages = limit_messages - len(conversation) - 1
                 return {"answer":answer, "remaining_messages":remaining_messages} 
 

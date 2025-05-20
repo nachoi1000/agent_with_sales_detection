@@ -46,8 +46,8 @@ class MongoDBManager:
             print(f"Error occurred while fetching conversations: {e}")
             return []
     
-    def add_conversation(self, conversation: BaseConversation) -> str:
-        """Add conversation to the collection."""
+    def add_item(self, conversation: BaseConversation) -> str:
+        """Add item to the collection."""
         self.reconnect_if_needed()
         try:
             result = self.collection.insert_one(conversation.to_dict())
