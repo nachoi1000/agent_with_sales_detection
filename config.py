@@ -1,4 +1,5 @@
 import os
+import logging
 from utils.file_manager import FileManager
 from storage.db.db_manager import MongoDBManager
 from storage.vector_db.vectorstore import ChromaVectorStore
@@ -10,18 +11,17 @@ load_dotenv()
 
 limit_messages_in_conversation = int(os.environ.get("LIMIT_MESSAGES_IN_CONVERSATION"))
 threshold_sales_intention_trigger = int(os.environ.get("THRESHOLD_SALES_INTENTION_TRIGGER"))
+privacy_policy_uri = os.environ.get("PRIVACY_POLICY_URI")
 
 #Mongo
-mongo_initdb_root_username = os.environ.get("MONGO_INITDB_ROOT_USERNAME")
-mongo_initdb_root_password = os.environ.get("MONGO_INITDB_ROOT_PASSWORD")
-#db_manager_conversations = MongoDBManager(collection_name="conversations", uri = f'mongodb://{mongo_initdb_root_username}:{mongo_initdb_root_password}@localhost:27017/')
-#db_manager_userdata = MongoDBManager(collection_name="userdata", uri = f'mongodb://{mongo_initdb_root_username}:{mongo_initdb_root_password}@localhost:27017/')
 db_manager_conversations = MongoDBManager(collection_name="conversations", uri = f'mongodb://localhost:27017/')
 db_manager_userdata = MongoDBManager(collection_name="userdata", uri = f'mongodb://localhost:27017/')
 
 #ChormaDB Vectorstore
 collection_name = os.environ.get("CHROMADB_COLLECTION_NAME")
+logging.debug(f"collection_name: {collection_name}")
 persist_directory = os.environ.get("CHROMADB_PERSIST_DIRECTORY")
+logging.debug(f"persist_directory: {persist_directory}")
 vectorstore = ChromaVectorStore(collection_name=collection_name, persist_directory=persist_directory)
 
 
@@ -33,6 +33,13 @@ assistant_model = "gpt-4o-mini"
 detector_model = "o3-mini"
 rag_model = "gpt-4o"
 
+valid_retrieval_strategies = {"text_search", "vector_search", "hybrid_search", "reranking"}
+retrieval_strategy = os.environ.get("RAG_RETRIEVAL_STRATEGY")
+if retrieval_strategy not in valid_retrieval_strategies:
+    raise ValueError(
+        f"Invalid retrieval strategy '{retrieval_strategy}'. "
+        f"Must be one of: {', '.join(valid_retrieval_strategies)}"
+    )
 
 #Assistant Content FIlter
 content_filter_prompt = file_manager.load_md_file("prompts/content_filter.md")
@@ -56,4 +63,4 @@ assistant_request_data = Assistant(client=client, base_prompt=request_data_promp
 
 #RAG
 rag_prompt = file_manager.load_md_file('prompts/quantum_rag.md')
-rag = RAG(client=client, base_prompt=rag_prompt, vectorstore=vectorstore, retrieval_strategy=os.environ.get("RAG_RETRIEVAL_STRATEGY"))
+rag = RAG(client=client, base_prompt=rag_prompt, vectorstore=vectorstore, retrieval_strategy=retrieval_strategy)

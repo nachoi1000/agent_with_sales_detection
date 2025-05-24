@@ -2,7 +2,7 @@ from typing import Dict, Union
 from utils.logger import logger
 from utils.conversation import Conversation, ConversationForSales
 from utils.user_data import UserInformation
-from config import db_manager_conversations, db_manager_userdata, assistant_content_filter, assistant_memory, assistant_sales_detector, assistant_consentiment, assistant_request_data, rag, limit_messages_in_conversation, threshold_sales_intention_trigger
+from config import db_manager_conversations, db_manager_userdata, assistant_content_filter, assistant_memory, assistant_sales_detector, assistant_consentiment, assistant_request_data, rag, limit_messages_in_conversation, threshold_sales_intention_trigger, privacy_policy_uri
 
 
 
@@ -35,8 +35,8 @@ def format_var_conversationforsales_messages(resultados: list[dict])-> str:
     
     return conversacion.strip()  # Remove any unnecessary line breaks at the beginning or end
 
-
-request_consent = "\n\nWe have noticed that you seems to be interested in know more deeply about QuantumChain's products and services.\n\nIf you would like one of our specialists to contact you and provide more detailed information, Do you give giving consent?\n\nFeel free to review our [Privacy Policy] if you have any concerns about the security or integrity of your personal data."
+request_consent = "\n\nWe have noticed that you seem to be interested in knowing more deeply about QuantumChain's products and services.\n\nIf you would like one of our specialists to contact you and provide more detailed information, do you give your consent?\n\nFeel free to review our <a href=\"{privacy_policy}\" target=\"_blank\">Privacy Policy</a> if you have any concerns about the security or integrity of your personal data."
+#request_consent = "\n\nWe have noticed that you seems to be interested in know more deeply about QuantumChain's products and services.\n\nIf you would like one of our specialists to contact you and provide more detailed information, Do you give giving consent?\n\nFeel free to review our [Privacy Policy] if you have any concerns about the security or integrity of your personal data."
 thanks_and_true_consent = "Thank you for giving your consent! To proceed, in the next message, please provide both your full name and email address. This information is necessary for us to assist you further."
 thanks_and_false_consent= "Understood. You have not given your consent, so we won’t collect any personal information. However, feel free to continue asking any questions you may have — we're here to help!"
 unsafe_user_input = "Bad user input. Please review you message, we have not answer your request due to the following reason: {content_filter}"
@@ -72,7 +72,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                 rag_api_call = rag.chat_completion_response(prompt=rag.base_prompt.format(context=context, question = question), question=question)
                 tokens_input += rag_api_call.get("tokens_input")
                 tokens_output += rag_api_call.get("tokens_output")
-                answer = rag_api_call.get("answer") + request_consent
+                answer = rag_api_call.get("answer") +  request_consent.format(privacy_policy = privacy_policy_uri)
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
@@ -118,7 +118,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     rag_api_call = rag.chat_completion_response(prompt=rag.base_prompt.format(context=context, question = chat_history), question=chat_history)
                     tokens_input += rag_api_call.get("tokens_input")
                     tokens_output += rag_api_call.get("tokens_output")
-                    answer = rag_api_call.get("answer") + request_consent
+                    answer = rag_api_call.get("answer") + request_consent.format(privacy_policy = privacy_policy_uri)
                     logger.info(f"conversation_id: {id} - answer: {answer}")
                     conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                     db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
@@ -149,7 +149,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                 rag_api_call = rag.chat_completion_response(prompt=rag.base_prompt.format(context=context, question = chat_history), question=chat_history)
                 tokens_input += rag_api_call.get("tokens_input")
                 tokens_output += rag_api_call.get("tokens_output")
-                answer = rag_api_call.get("answer") + request_consent
+                answer = rag_api_call.get("answer") + request_consent.format(privacy_policy = privacy_policy_uri)
                 logger.info(f"conversation_id: {id} - answer: {answer}")
                 conversation_to_save = Conversation(conversation_id=id, question=question, answer=answer, sales_intention=sales_intention, consent=consent)
                 db_manager_conversations.add_item(conversation_to_save) # SAVE conversation_to_save IN DB
@@ -209,7 +209,7 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
                     db_manager_userdata.add_item(user_data_to_save) # SAVE conversation_to_save IN DB
 
                     # Generate a responses requesting the missing user data.
-                    response_api_call = assistant_request_data.chat_completion_response(prompt=assistant_request_data.base_prompt.format(user_data = UserInformation.schema_json(indent=2), current_data = user_data.get("answer")), question="")
+                    response_api_call = assistant_request_data.chat_completion_response(prompt=assistant_request_data.base_prompt.format(user_data = UserInformation.schema_json(indent=2), current_data = user_data), question="")
                     tokens_input += response_api_call.get("tokens_input")
                     tokens_output += response_api_call.get("tokens_output")
                     answer = response_api_call.get("answer")
@@ -253,6 +253,5 @@ def generate_answer(id: str, user_input: str, limit_messages: int = limit_messag
 
     else:
         answer = unsafe_user_input.format(content_filter = content_filter)
-        #answer = f"Bad user input. Please review you message, we have not answer your request due to the following reason: {content_filter}"
         remaining_messages = limit_messages - 1
         return {"answer":answer, "remaining_messages":remaining_messages}

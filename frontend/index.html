@@ -243,7 +243,7 @@
 
             const contentElement = document.createElement('div');
             contentElement.classList.add('message-content');
-            contentElement.textContent = message;
+            contentElement.innerHTML = message;// changed from contentElement.textContent = message;
 
             messageElement.appendChild(iconElement);
             messageElement.appendChild(contentElement);
