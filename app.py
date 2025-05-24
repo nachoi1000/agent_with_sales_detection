@@ -26,4 +26,4 @@ async def serve_frontend():
     return await send_from_directory('./frontend', 'index.html')
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=5000)

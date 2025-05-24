@@ -19,10 +19,11 @@ data_directory = os.environ.get("DATA_DIRECTORY")
 logging.info(f"data_directory: {data_directory}")
 
 
+embedding_fn = Vectorizer(api_key)
 # Initialize the Chroma vectorstore with persistence
 vectorstore = ChromaVectorStore(
     collection_name=os.environ.get("CHROMADB_COLLECTION_NAME"),
-    embedding_function=Vectorizer(api_key).generate_vectors,
+    embedding_function=embedding_fn,
     persist_directory=persist_directory
 )
 

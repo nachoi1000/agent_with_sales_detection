@@ -1,4 +1,5 @@
 import inspect
+import logging
 import os
 from typing import Callable, List, Dict, Optional
 import chromadb
@@ -41,8 +42,7 @@ class ChromaVectorStore:
             self.client = chromadb.Client()
 
         self.collection_name = collection_name
-        self.metric = metric  
-        self.collection = self.get_or_create_collection()
+        self.metric = metric
 
         # If no embedding function is provided, use OpenAI's embedding function
         if embedding_function is None:
@@ -50,6 +50,8 @@ class ChromaVectorStore:
             #self.embedding_function = OpenAIEmbeddingFunction(api_key=api_key, model_name="text-embedding-ada-002")
         else:
             self.embedding_function = embedding_function
+
+        self.collection = self.get_or_create_collection()
 
         self.retrieval_strategies = RetrievalStrategies()
 
@@ -61,7 +63,7 @@ class ChromaVectorStore:
         return self.client.get_or_create_collection(
         name=self.collection_name,
         metadata={"hnsw:space": self.metric},
-        embedding_function= openai_ef)
+        embedding_function= self.embedding_function)
 
     def add_document(self, document: Document):
         """
