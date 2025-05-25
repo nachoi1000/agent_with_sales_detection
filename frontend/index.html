@@ -75,19 +75,30 @@
             padding: 10px;
             border-radius: 5px;
             max-width: 80%;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message-icon {
+            margin-right: 10px;
+            min-width: 24px;
+        }
+        .message-content {
+            flex-grow: 1;
         }
         .user-message {
             background-color: #e1f5fe;
             color: #01579b;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            align-self: flex-end;
+            align-self: flex-start;
             margin-left: auto;
+            white-space: pre-wrap;
         }
         .bot-message {
             background-color: #f0f4c3;
             color: #33691e;
             font-family: 'Courier New', Courier, monospace;
             align-self: flex-start;
+            white-space: pre-wrap;
         }
         .input-area {
             display: flex;
@@ -101,6 +112,9 @@
             border-radius: 5px;
             background-color: var(--bg-color);
             color: var(--text-color);
+            font-family: inherit;
+            font-size: 1em;
+            resize: none;
         }
         button {
             padding: 10px 20px;
@@ -123,6 +137,17 @@
         #reset-button {
             background-color: var(--reset-button-bg);
         }
+        .remaining-messages {
+            text-align: center;
+            padding: 10px;
+            background-color: var(--input-bg);
+            border-top: 1px solid var(--text-color);
+            font-size: 14px;
+        }
+        #send-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -134,7 +159,7 @@
         <div class="chat-wrapper">
             <div id="messages"></div>
             <div class="input-area">
-                <input type="text" id="user-input" placeholder="Type your message...">
+                <textarea id="user-input" placeholder="Type your message..." rows="2" style="resize: none;"></textarea>
                 <button id="send-button" onclick="sendMessage()">
                     <i data-lucide="send"></i>
                     Send
@@ -144,12 +169,17 @@
                     Reset
                 </button>
             </div>
+            <div id="remaining-messages" class="remaining-messages">
+                Available Messages: <span id="remaining-count">10</span>
+            </div>
         </div>
     </div>
 
     <script>
         let conversationId = null;
         let isDarkMode = false;
+        let remainingMessages = 10;
+        let isWaitingForResponse = false;
 
         async function createConversation() {
             const response = await fetch('/conversation', {
@@ -161,11 +191,18 @@
             });
             const data = await response.json();
             conversationId = data.conversation_id;
+            
+            // Display welcome message after creating conversation
+            const welcomeMessage = "Hello and welcome to QuantumChain Technologies! 🚀\nI'm your virtual assistant, here to help you with anything related to our AI, blockchain, and cybersecurity solutions.\n\nHow can I assist you today?";
+            addMessage(welcomeMessage, 'bot-message');
         }
 
         async function sendMessage() {
             const userInput = document.getElementById('user-input').value;
-            if (!userInput) return;
+            if (!userInput || remainingMessages === 0 || isWaitingForResponse) return;
+
+            isWaitingForResponse = true;
+            updateSendButtonState();
 
             addMessage(userInput, 'user-message');
             document.getElementById('user-input').value = '';
@@ -174,29 +211,62 @@
                 await createConversation();
             }
 
-            const response = await fetch('/message', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ conversation_id: conversationId, user_input: userInput }),
-            });
-            const data = await response.json();
-            addMessage(data.answer, 'bot-message');
+            try {
+                const response = await fetch('/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ conversation_id: conversationId, user_input: userInput }),
+                });
+                const data = await response.json();
+                addMessage(data.answer, 'bot-message');
+                updateRemainingMessages(data.remaining_messages);
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, there was an error processing your request.', 'bot-message');
+            } finally {
+                isWaitingForResponse = false;
+                updateSendButtonState();
+            }
         }
 
         function addMessage(message, className) {
             const messagesContainer = document.getElementById('messages');
             const messageElement = document.createElement('div');
             messageElement.classList.add('message', className);
-            messageElement.textContent = message;
+
+            const iconElement = document.createElement('div');
+            iconElement.classList.add('message-icon');
+
+            if (className === 'user-message') {
+                iconElement.innerHTML = '<i data-lucide="user-circle"></i>';
+            } else {
+                iconElement.innerHTML = '<i data-lucide="bot"></i>';
+            }
+
+            const contentElement = document.createElement('div');
+            contentElement.classList.add('message-content');
+            contentElement.innerHTML = message;// changed from contentElement.textContent = message;
+
+            messageElement.appendChild(iconElement);
+            messageElement.appendChild(contentElement);
+
             messagesContainer.appendChild(messageElement);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            lucide.createIcons();
         }
 
         function resetChat() {
             document.getElementById('messages').innerHTML = '';
             conversationId = null;
+            updateRemainingMessages(10);
+            isWaitingForResponse = false;
+            updateSendButtonState();
+            
+            // Show welcome message again after reset
+            createConversation();
         }
 
         function toggleDarkMode() {
@@ -217,9 +287,31 @@
             }
         }
 
+        function updateRemainingMessages(count) {
+            remainingMessages = count;
+            document.getElementById('remaining-count').textContent = count;
+            updateSendButtonState();
+        }
+
+        function updateSendButtonState() {
+            const sendButton = document.getElementById('send-button');
+            sendButton.disabled = remainingMessages === 0 || isWaitingForResponse;
+        }
+
         // Initialize the conversation and Lucide icons
-        createConversation();
-        lucide.createIcons();
+        document.addEventListener('DOMContentLoaded', function() {
+            createConversation();
+            lucide.createIcons();
+            updateRemainingMessages(10);
+
+            // Añade esta parte para permitir enviar con Enter
+            document.getElementById("user-input").addEventListener("keydown", function(event) {
+                if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault(); // Previene salto de línea
+                    document.getElementById("send-button").click(); // Envía mensaje
+                }
+            });
+        });
     </script>
 </body>
 </html>

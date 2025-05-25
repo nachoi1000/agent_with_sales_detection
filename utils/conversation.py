@@ -29,20 +29,20 @@ class Conversation(BaseConversation):
 
 
 class ConversationForSales(BaseConversation):
-    def __init__(self, conversation_id: str, name: str, email: str, conversation: list[str]):
+    def __init__(self, conversation_id: str, name: str, email: str, message: str):
         self.conversation_id = conversation_id  
         self.name = name
         self.email = email
-        self.conversation = conversation
+        self.message = message
 
     def __repr__(self):
         return (f"Conversation(id={self.conversation_id}, name={self.name}, "
-                f"email={self.email}, conversation={self.conversation})")
+                f"email={self.email}, message={self.message})")
 
     def to_dict(self):
         return {
             'conversation_id': self.conversation_id,
             'name': self.name,
             'email': self.email,
-            'conversation': self.conversation
+            'message': self.message
         }

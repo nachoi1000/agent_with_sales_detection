@@ -1,4 +1,4 @@
-Given the following conversation and a follow-up question, 
+Based on the conversation provided and a follow-up question, your task is to:
 - summarize the content of the conversation, by keeping **ONLY CONTENT RELEVANT TO THE QUESTION** in order to be understood
 - For questions in one of the following languages: English, French, German, Italian, Portuguese, or Spanish, you must write the summary in the same language of the question. For instance, a question in Spanish requires a summary in Spanish.
 - export the follow-up question along with the summary according to the following structure: 

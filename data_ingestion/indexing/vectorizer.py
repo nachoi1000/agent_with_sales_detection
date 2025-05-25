@@ -1,5 +1,5 @@
 from openai import OpenAI
-from typing import List
+from typing import List, Union
 client = OpenAI()
 
 class Vectorizer:
@@ -30,3 +30,19 @@ class Vectorizer:
             vector = response.data[0].embedding
             vectors.append(vector)
         return vectors
+    
+    def __call__(self, input: Union[str, List[str]]) -> List[List[float]]:
+        """
+        Make this class callable, as required by ChromaDB. Converts input text(s) to embedding vectors.
+
+        Args:
+            input (Union[str, List[str]]): A string or list of strings to embed.
+
+        Returns:
+            List[List[float]]: Embedding vectors.
+        """
+        if isinstance(input, str):
+            input = [input]
+
+        response = self.client.embeddings.create(input=input, model=self.model)
+        return [item.embedding for item in response.data]

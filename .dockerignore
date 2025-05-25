@@ -1,0 +1,38 @@
+# Ignora archivos y carpetas comunes
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# Ignora carpetas de virtualenv
+env/
+venv/
+.venv/
+
+# Ignora archivos de configuración de IDEs
+.vscode/
+.idea/
+
+# Ignora archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Ignora Git y cosas de desarrollo
+.git/
+.gitignore
+
+# Ignora archivos de logs y cachés
+*.log
+*.cache/
+*.egg-info/
+
+# Ignora archivos de pruebas
+tests/
+
+# ipynb
+*.ipynb
+
+# .env
+.env
