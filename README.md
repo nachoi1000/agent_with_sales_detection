@@ -18,6 +18,8 @@ The development was carried out entirely **from scratch**. It includes:
 - Storing the processed data in a **ChromaDB** vector database.
 - Retrieving relevant information to use as **context in prompts**.
 
+The formats of the data that can be processed and ingested into Vectordatabase are: **.pdf** (Native (digitally created) or Scanned with OCR, not Scanned without OCR), **.txt**, **.md**, **.doc** and **.docx**.
+
 To enhance retrieval quality, **four different strategies** were implemented and can be configured dynamically.
 
 
