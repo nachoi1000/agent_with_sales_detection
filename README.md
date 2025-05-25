@@ -97,6 +97,12 @@ Detects whether the user has given consent to share personal information.
 
 Reconstructs the conversation history from stored messages.
 
+**Assistant Request Data**
+
+[![Assistant Request Data](docs/assistant_request_data.svg)](docs/request_data.svg)
+
+Scrap user conversation to obtain *name* and *email* if one is missing it will request it on the generated answer. 
+
 ---
 
 ## Important classes
